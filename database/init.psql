@@ -1,0 +1,70 @@
+
+\c rideshare_db;
+
+-- Create tables
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    password_hash VARCHAR(128) NOT NULL,
+    type VARCHAR(20) NOT NULL,
+    rating FLOAT DEFAULT 0.0,
+    rides_completed INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE location (
+    id SERIAL PRIMARY KEY,
+    lat FLOAT NOT NULL,
+    lng FLOAT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) NOT NULL
+);
+
+CREATE TABLE ride (
+    id SERIAL PRIMARY KEY,
+    driver_id INTEGER REFERENCES users(id) NOT NULL,
+    origin_id INTEGER REFERENCES location(id) NOT NULL,
+    destination_id INTEGER REFERENCES location(id) NOT NULL,
+    departure_time TIMESTAMP NOT NULL,
+    available_seats INTEGER NOT NULL,
+    price_per_seat FLOAT NOT NULL,
+    status VARCHAR(20) DEFAULT 'available',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE ride_request (
+    id SERIAL PRIMARY KEY,
+    ride_id INTEGER REFERENCES ride(id) NOT NULL,
+    passenger_id INTEGER REFERENCES users(id) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    requested_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE payment (
+    id SERIAL PRIMARY KEY,
+    ride_id INTEGER REFERENCES ride(id) NOT NULL,
+    passenger_id INTEGER REFERENCES users(id) NOT NULL,
+    amount FLOAT NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending',
+    processed_at TIMESTAMPTZ
+);
+
+CREATE TABLE review (
+    id SERIAL PRIMARY KEY,
+    ride_id INTEGER REFERENCES ride(id) NOT NULL,
+    reviewer_id INTEGER REFERENCES users(id) NOT NULL,
+    reviewee_id INTEGER REFERENCES users(id) NOT NULL,
+    rating INTEGER NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_ride_driver ON ride(driver_id);
+CREATE INDEX idx_ride_departure ON ride(departure_time);
+CREATE INDEX idx_request_ride ON ride_request(ride_id);
+CREATE INDEX idx_request_passenger ON ride_request(passenger_id);
