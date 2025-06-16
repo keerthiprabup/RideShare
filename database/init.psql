@@ -1,14 +1,16 @@
-
+-- Drop and recreate the database
+DROP DATABASE IF EXISTS rideshare_db;
+CREATE DATABASE rideshare_db;
 \c rideshare_db;
 
 -- Create tables
+
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     phone VARCHAR(20) NOT NULL,
-    password_hash VARCHAR(128) NOT NULL,
-    type VARCHAR(20) NOT NULL,
+    password_hash VARCHAR(400) NOT NULL,
     rating FLOAT DEFAULT 0.0,
     rides_completed INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -20,7 +22,8 @@ CREATE TABLE location (
     lat FLOAT NOT NULL,
     lng FLOAT NOT NULL,
     name VARCHAR(100) NOT NULL,
-    type VARCHAR(50) NOT NULL
+    type VARCHAR(50) NOT NULL,
+    CONSTRAINT unique_lat_lng UNIQUE (lat, lng)  -- ✅ Add this line
 );
 
 CREATE TABLE ride (
@@ -63,7 +66,7 @@ CREATE TABLE review (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create indexes for performance
+-- Indexes for performance
 CREATE INDEX idx_ride_driver ON ride(driver_id);
 CREATE INDEX idx_ride_departure ON ride(departure_time);
 CREATE INDEX idx_request_ride ON ride_request(ride_id);
