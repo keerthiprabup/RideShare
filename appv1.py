@@ -11,6 +11,7 @@ import os
 from dotenv import load_dotenv
 from flask import render_template
 from flask_cors import CORS
+from math import radians, sin, cos, sqrt, atan2
 
 load_dotenv()
 
@@ -132,6 +133,72 @@ def login():
         cur.close()
         conn.close()
 
+# @app.route('/api/rides/search', methods=['POST'])
+# @jwt_required()
+# def search_rides():
+#     data = request.get_json()
+#     origin = data.get('origin')
+#     destination = data.get('destination')
+#     date = data.get('date')
+#     proximity = data.get('proximity')
+    
+#     if not all([origin, destination, date]):
+#         return jsonify({'message': 'Missing parameters'}), 400
+    
+#     try:
+#         conn = get_db_connection()
+#         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+#         # Extract location IDs from coordinates
+#         cur.execute("""
+#             SELECT r.*, 
+#                    u.name AS driver_name, 
+#                    u.rating AS driver_rating, 
+#                    u.rides_completed AS driver_rides_completed,
+#                    lo.name AS origin_name,
+#                    ld.name AS destination_name
+#             FROM ride r
+#             JOIN users u ON r.driver_id = u.id
+#             JOIN location lo ON r.origin_id = lo.id
+#             JOIN location ld ON r.destination_id = ld.id
+#             WHERE DATE(r.departure_time) = %s 
+#             AND r.origin_id = (SELECT id FROM location WHERE lat = %s AND lng = %s LIMIT 1)
+#             AND r.destination_id = (SELECT id FROM location WHERE lat = %s AND lng = %s LIMIT 1)
+#             AND r.status = 'available'
+#             AND r.available_seats > 0
+#         """, (date, origin['lat'], origin['lng'], destination['lat'], destination['lng']))
+        
+#         rides = cur.fetchall()
+        
+#         # Format rides for response
+#         formatted_rides = []
+#         for ride in rides:
+#             ride_dict = dict(ride)
+#             ride_dict['origin'] = {
+#                 'lat': origin['lat'],
+#                 'lng': origin['lng'],
+#                 'address': ride_dict['origin_name']
+#             }
+#             ride_dict['destination'] = {
+#                 'lat': destination['lat'],
+#                 'lng': destination['lng'],
+#                 'address': ride_dict['destination_name']
+#             }
+#             ride_dict['driver'] = {
+#                 'name': ride_dict['driver_name'],
+#                 'rating': ride_dict['driver_rating'],
+#                 'rides_completed': ride_dict['driver_rides_completed']
+#             }
+#             formatted_rides.append(ride_dict)
+            
+#         return jsonify(formatted_rides)
+        
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
+#     finally:
+#         cur.close()
+#         conn.close()
+
 @app.route('/api/rides/search', methods=['POST'])
 @jwt_required()
 def search_rides():
@@ -139,63 +206,80 @@ def search_rides():
     origin = data.get('origin')
     destination = data.get('destination')
     date = data.get('date')
+    proximity = data.get('proximity')  # In meters
     
-    if not all([origin, destination, date]):
+    if not all([origin, destination, date, proximity]):
         return jsonify({'message': 'Missing parameters'}), 400
-    
+
+    # Convert proximity to kilometers
+    proximity_km = float(proximity) / 1000.0
+
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         
-        # Extract location IDs from coordinates
+        # Select all rides for the date and with available seats
         cur.execute("""
             SELECT r.*, 
                    u.name AS driver_name, 
                    u.rating AS driver_rating, 
                    u.rides_completed AS driver_rides_completed,
+                   lo.lat AS origin_lat,
+                   lo.lng AS origin_lng,
                    lo.name AS origin_name,
+                   ld.lat AS dest_lat,
+                   ld.lng AS dest_lng,
                    ld.name AS destination_name
             FROM ride r
             JOIN users u ON r.driver_id = u.id
             JOIN location lo ON r.origin_id = lo.id
             JOIN location ld ON r.destination_id = ld.id
             WHERE DATE(r.departure_time) = %s 
-            AND r.origin_id = (SELECT id FROM location WHERE lat = %s AND lng = %s LIMIT 1)
-            AND r.destination_id = (SELECT id FROM location WHERE lat = %s AND lng = %s LIMIT 1)
-            AND r.status = 'available'
-            AND r.available_seats > 0
-        """, (date, origin['lat'], origin['lng'], destination['lat'], destination['lng']))
+              AND r.status = 'available'
+              AND r.available_seats > 0
+        """, (date,))
         
         rides = cur.fetchall()
+
+        # Haversine function
+        def haversine(lat1, lng1, lat2, lng2):
+            R = 6371  # Earth radius in kilometers
+            dlat = radians(lat2 - lat1)
+            dlng = radians(lng2 - lng1)
+            a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2)**2
+            c = 2 * atan2(sqrt(a), sqrt(1 - a))
+            return R * c
         
-        # Format rides for response
-        formatted_rides = []
+        # Filter by proximity
+        filtered_rides = []
         for ride in rides:
-            ride_dict = dict(ride)
-            ride_dict['origin'] = {
-                'lat': origin['lat'],
-                'lng': origin['lng'],
-                'address': ride_dict['origin_name']
-            }
-            ride_dict['destination'] = {
-                'lat': destination['lat'],
-                'lng': destination['lng'],
-                'address': ride_dict['destination_name']
-            }
-            ride_dict['driver'] = {
-                'name': ride_dict['driver_name'],
-                'rating': ride_dict['driver_rating'],
-                'rides_completed': ride_dict['driver_rides_completed']
-            }
-            formatted_rides.append(ride_dict)
-            
-        return jsonify(formatted_rides)
-        
+            if haversine(origin['lat'], origin['lng'], ride['origin_lat'], ride['origin_lng']) <= proximity_km and haversine(destination['lat'], destination['lng'], ride['dest_lat'], ride['dest_lng']) <= proximity_km:
+                ride_dict = dict(ride)
+                ride_dict['origin'] = {
+                    'lat': ride['origin_lat'],
+                    'lng': ride['origin_lng'],
+                    'address': ride['origin_name']
+                }
+                ride_dict['destination'] = {
+                    'lat': ride['dest_lat'],
+                    'lng': ride['dest_lng'],
+                    'address': ride['destination_name']
+                }
+                ride_dict['driver'] = {
+                    'name': ride['driver_name'],
+                    'rating': ride['driver_rating'],
+                    'rides_completed': ride['driver_rides_completed']
+                }
+                filtered_rides.append(ride_dict)
+
+        return jsonify(filtered_rides)
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     finally:
         cur.close()
         conn.close()
+
 
 @app.route('/api/rides', methods=['POST'])
 @jwt_required()

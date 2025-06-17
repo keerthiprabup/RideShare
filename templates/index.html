@@ -137,7 +137,7 @@
         </div>
 
         <!-- Find Rides Page -->
-        <section id="find-rides" class="page">
+        <!-- <section id="find-rides" class="page">
             <div class="container">
                 <h2>Join a Ride</h2>
                 <div class="search-section">
@@ -172,7 +172,104 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </section> -->
+<!-- Find Rides Page with Map -->
+<section id="find-rides" class="page">
+    <div class="container">
+      <h2>Join a Ride</h2>
+      <div class="search-section">
+        <form id="searchForm" class="search-form">
+          <div class="search-row">
+            <div class="form-group">
+              <label class="form-label">From</label>
+              <input type="text" id="searchOrigin" class="form-control" placeholder="Select pickup point on map" required readonly>
+              <div id="searchOriginMap" class="map-input"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">To</label>
+              <input type="text" id="searchDestination" class="form-control" placeholder="Select drop-off point on map" required readonly>
+              <div id="searchDestinationMap" class="map-input"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-control" id="searchDate" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">From Proximity (in meters)</label>
+                <input type="number" class="form-control" id="searchProximity" min="10" max="20000" step="10" value="1000" required>
+              </div>              
+            <div class="form-group">
+              <button type="submit" class="btn btn--primary">Search Rides</button>
+            </div>
+          </div>
+        </form>
+      </div>
+  
+      <div id="searchResults" class="search-results">
+        <div class="no-results">
+          <p>Enter your travel details to find available rides</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Add this script where your map scripts are handled -->
+  <script>
+    let searchOriginCoord = null;
+    let searchDestinationCoord = null;
+  
+    function initSearchMaps() {
+      const originMap = L.map('searchOriginMap').setView([9.9252, 78.1198], 10);
+      const destinationMap = L.map('searchDestinationMap').setView([9.9252, 78.1198], 10);
+  
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(originMap);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(destinationMap);
+  
+      let originMarker = null;
+      originMap.on('click', function(e) {
+        if (originMarker) originMap.removeLayer(originMarker);
+        originMarker = L.marker(e.latlng).addTo(originMap);
+        searchOriginCoord = e.latlng;
+        document.getElementById('searchOrigin').value = JSON.stringify({
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+          address: `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`
+        });
+      });
+  
+      let destMarker = null;
+      destinationMap.on('click', function(e) {
+        if (destMarker) destinationMap.removeLayer(destMarker);
+        destMarker = L.marker(e.latlng).addTo(destinationMap);
+        searchDestinationCoord = e.latlng;
+        document.getElementById('searchDestination').value = JSON.stringify({
+          lat: e.latlng.lat,
+          lng: e.latlng.lng,
+          address: `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`
+        });
+      });
+    }
+  
+    document.addEventListener('DOMContentLoaded', () => {
+      initSearchMaps();
+    });
+  </script>
+  
+  <style>
+    .map-input {
+      height: 200px;
+      border-radius: 8px;
+      margin-top: 8px;
+      margin-bottom: 16px;
+    }
+  </style>
+  
+
+
 
         <!-- Offer Ride Page -->
         <!-- <section id="offer-ride" class="page">

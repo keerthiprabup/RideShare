@@ -1660,6 +1660,8 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const origin = JSON.parse(originStr);
         const destination = JSON.parse(destinationStr);
+        const proximity = parseInt(document.getElementById('searchProximity').value);
+
         
         const response = await fetch(`${this.apiBaseUrl}/rides/search`, {
           method: 'POST',
@@ -1670,7 +1672,8 @@ document.addEventListener('DOMContentLoaded', () => {
           body: JSON.stringify({
             origin,
             destination,
-            date
+            date,
+            proximity
           })
         });
         
@@ -1739,10 +1742,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="detail-item">
               <div class="detail-label">Seats</div>
               <div class="detail-value">${ride.available_seats} available</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-label">Pickup</div>
-              <div class="detail-value">< 500m away</div>
             </div>
             <div class="detail-item">
               <div class="detail-label">Status</div>
