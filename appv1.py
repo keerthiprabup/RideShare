@@ -1,5 +1,4 @@
 
-#hamme
 # app.py
 from flask import Flask, request, jsonify
 import psycopg2
